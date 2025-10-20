@@ -28,7 +28,7 @@ const ModeSelector = ({ selectedMode, onModeChange, disabled }: ModeSelectorProp
             font-mono text-sm
             ${selectedMode === mode.value 
               ? 'bg-primary text-primary-foreground' 
-              : 'text-muted-foreground hover:text-foreground'
+              : 'text-muted-foreground hover:text-black'
             }
           `}
         >

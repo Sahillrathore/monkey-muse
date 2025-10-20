@@ -53,7 +53,7 @@ const TimerSelector = ({ selectedTime, onTimeChange, disabled }: TimerSelectorPr
             onChange={(e) => setCustomTime(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeSubmit()}
             placeholder="sec"
-            className="w-16 h-8 text-sm font-mono"
+            className="w-32 h-8 text-sm font-mono"
             min="1"
             max="300"
             autoFocus
