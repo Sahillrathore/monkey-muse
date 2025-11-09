@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { generateRow, TestMode } from '@/utils/wordGenerator';
 import { RotateCcw } from 'lucide-react';
+// @ts-ignore
 import { Button } from '@/components/ui/button';
 import TestResults from './TestResults';
 import TimerSelector from './TimerSelector';
@@ -41,8 +43,12 @@ const TypingTest = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const WORDS_TO_GENERATE = 50; // Generate 50 words at a time
+  const WORDS_BUFFER = 20; // Add more words when 20 are left
+
   useEffect(() => {
-    setWords(generateRow(100, selectedMode));
+    // Start with an initial set of words
+    setWords(generateRow(WORDS_TO_GENERATE, selectedMode));
   }, [selectedMode]);
 
   useEffect(() => {
@@ -80,7 +86,7 @@ const TypingTest = () => {
   };
 
   const handleRestart = () => {
-    setWords(generateRow(100, selectedMode));
+    setWords(generateRow(WORDS_TO_GENERATE, selectedMode));
     setCurrentWordIndex(0);
     setCurrentCharIndex(0);
     setInput('');
@@ -94,7 +100,6 @@ const TypingTest = () => {
     inputRef.current?.focus();
   };
 
-  // put this near your other helpers
   const isLetter = (k: string) => /^[a-zA-Z]$/.test(k);
 
   const handleModeChange = (mode: TestMode) => {
@@ -112,12 +117,10 @@ const TypingTest = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (status === 'finished') return;
 
-    // ✅ Only start when a letter key is pressed
     if (status === 'idle') {
       if (isLetter(e.key)) {
-        handleStart(); // will also focus input
+        handleStart();
       } else {
-        // ignore everything else until a letter starts the test
         e.preventDefault();
         return;
       }
@@ -128,7 +131,17 @@ const TypingTest = () => {
     if (e.key === ' ') {
       e.preventDefault();
       if (input.length > 0) {
-        setCurrentWordIndex(currentWordIndex + 1);
+        const newWordIndex = currentWordIndex + 1;
+
+        // Check if we need to add more words
+        if (newWordIndex > words.length - WORDS_BUFFER) {
+          setWords(prevWords => [
+            ...prevWords,
+            ...generateRow(WORDS_TO_GENERATE, selectedMode)
+          ]);
+        }
+
+        setCurrentWordIndex(newWordIndex);
         setCurrentCharIndex(0);
         setInput('');
       }
@@ -149,7 +162,6 @@ const TypingTest = () => {
       return;
     }
 
-    // Only handle printable single characters
     if (e.key.length === 1) {
       const newInput = input + e.key;
       setInput(newInput);
@@ -224,7 +236,6 @@ const TypingTest = () => {
       onKeyDown={handleKeyPress}
     >
       <div className="w-full max-w-6xl space-y-8">
-        {/* Mode Selector */}
         <div className="flex items-center justify-center">
           <ModeSelector
             selectedMode={selectedMode}
@@ -233,14 +244,12 @@ const TypingTest = () => {
           />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <TimerSelector
             selectedTime={selectedTime}
             onTimeChange={handleTimeChange}
             disabled={status === 'running'}
           />
-
           <div className="flex items-center gap-6">
             <div className="text-4xl font-bold text-primary tabular-nums">
               {timeLeft}
@@ -248,7 +257,6 @@ const TypingTest = () => {
           </div>
         </div>
 
-        {/* Words Display */}
         <WordDisplay
           words={words}
           currentWordIndex={currentWordIndex}
@@ -257,11 +265,10 @@ const TypingTest = () => {
           status={status}
         />
 
-        {/* Hidden input */}
         <input
           ref={inputRef}
           type="text"
-          className="typing-input"
+          className="typing-input" // Use CSS to hide this
           value={input}
           onChange={() => { }}
           autoComplete="off"
@@ -280,13 +287,22 @@ const TypingTest = () => {
           </Button>
         </div>
 
-        {/* Instruction */}
         {status === 'idle' && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 transform text-center text-muted-foreground text-sm animate-fade-in pointer-events-none">
             Click here or start typing to begin the test
           </div>
         )}
       </div>
+      {/* Add this style to hide the input, as it was in your original code */}
+      <style>{`
+        .typing-input {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+          pointer-events: none;
+        }
+      `}</style>
     </div>
   );
 };
