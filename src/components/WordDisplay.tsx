@@ -1,57 +1,139 @@
-import { TestStatus } from './TypingTest'; // Assuming this import is correct
-import { useRef, useEffect, useState } from 'react';
+import { TestStatus } from './TypingTest';
+import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 
 interface WordDisplayProps {
   words: string[];
   currentWordIndex: number;
   currentCharIndex: number;
+  // typedChars maps "wordIdx-charIdx" -> 'correct' | 'incorrect' | undefined
   typedChars: { [key: string]: string };
   status: TestStatus;
 }
 
-const WordDisplay = ({
+const LINE_HEIGHT_ESTIMATE = 57;
+
+const WordDisplay: React.FC<WordDisplayProps> = ({
   words,
   currentWordIndex,
   currentCharIndex,
   typedChars,
   status
-}: WordDisplayProps) => {
+}) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const wordElsRef = useRef(new Map<number, HTMLDivElement>());
+  const charElsRef = useRef(new Map<string, HTMLSpanElement>());
+
   const [translateY, setTranslateY] = useState(0);
-  const wordElementsRef = useRef(new Map<number, HTMLDivElement>());
 
-  // Estimate line height: text-3xl (30px) * leading-relaxed (1.625) = ~49px
-  // Plus gap-y-2 (8px) = ~57px. We'll use this to calculate scroll.
-  const LINE_HEIGHT_ESTIMATE = 57;
+  // caret measured relative to *wrapper* (px)
+  const [caretLeft, setCaretLeft] = useState(0);
+  const [caretTop, setCaretTop] = useState(0);
+  const [caretHeight, setCaretHeight] = useState(20);
+  const [showCaret, setShowCaret] = useState(false);
 
+  // vertical translate (same logic)
   useEffect(() => {
-    // On restart, currentWordIndex will be 0.
-    // This will calculate targetTranslateY as (0 - 57) = -57.
-    // Math.max(0, -57) is 0, so the scroll will be reset to 0, which is correct.
-    const currentWordEl = wordElementsRef.current.get(currentWordIndex);
-    if (!currentWordEl) return;
-
-    const currentWordOffsetTop = currentWordEl.offsetTop;
-    const targetTranslateY = currentWordOffsetTop - LINE_HEIGHT_ESTIMATE;
-
+    const currentWordEl = wordElsRef.current.get(currentWordIndex);
+    if (!currentWordEl) {
+      setTranslateY(0);
+      return;
+    }
+    const targetTranslateY = currentWordEl.offsetTop - LINE_HEIGHT_ESTIMATE;
     setTranslateY(Math.max(0, targetTranslateY));
+  }, [currentWordIndex, words]);
 
-  }, [currentWordIndex]);
+  // measure caret position relative to wrapper (so caret moves together with wrapper while it animates)
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
 
-  // --- FIX ---
-  // Removed the problematic useEffect that watched [words].
-  // This was causing the scroll to reset when new words were added.
-  // The logic in the [currentWordIndex] hook above is sufficient
-  // to reset the scroll to 0 when currentWordIndex becomes 0.
+    if (status !== 'running') {
+      setShowCaret(false);
+      return;
+    }
+    setShowCaret(true);
+
+    const measure = () => {
+      const curKey = `${currentWordIndex}-${currentCharIndex}`;
+      const charEl = charElsRef.current.get(curKey);
+
+      const wordEl = wordElsRef.current.get(currentWordIndex);
+      if (!wordEl) {
+        // fallback: caret at top-left of wrapper
+        setCaretLeft(0);
+        setCaretTop(0);
+        setCaretHeight(20);
+        return;
+      }
+
+      const wrapperRect = wrapper.getBoundingClientRect();
+      // If exact char exists, position caret at its left (relative to wrapper)
+      if (charEl) {
+        const charRect = charEl.getBoundingClientRect();
+        const left = charRect.left - wrapperRect.left;
+        const top = charRect.top - wrapperRect.top;
+        setCaretLeft(left);
+        setCaretTop(top);
+        setCaretHeight(charRect.height);
+        return;
+      }
+
+      // If no exact char (caret could be at end of word), place after last char
+      const lastIdx = Math.max(
+        0,
+        Math.min((words[currentWordIndex] ?? '').length - 1, currentCharIndex - 1)
+      );
+      const lastKey = `${currentWordIndex}-${lastIdx}`;
+      const lastEl = charElsRef.current.get(lastKey);
+      if (lastEl) {
+        const lastRect = lastEl.getBoundingClientRect();
+        const left = lastRect.left - wrapperRect.left + lastRect.width;
+        const top = lastRect.top - wrapperRect.top;
+        setCaretLeft(left);
+        setCaretTop(top);
+        setCaretHeight(lastRect.height);
+        return;
+      }
+
+      // Fallback: caret at start of the word element
+      const wordRect = wordEl.getBoundingClientRect();
+      setCaretLeft(wordRect.left - wrapperRect.left);
+      setCaretTop(wordRect.top - wrapperRect.top);
+      setCaretHeight(wordRect.height);
+    };
+
+    // Measure now (useLayoutEffect) — but also schedule one rAF after paint for cases where layout changes due to animation
+    measure();
+    const raf = requestAnimationFrame(() => {
+      measure();
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [currentWordIndex, currentCharIndex, words, status]);
+
+  const getExtraTypedKeysForWord = (wordIdx: number) =>
+    Object.keys(typedChars)
+      .map((k) => {
+        const [wIdxStr, cIdxStr] = k.split('-');
+        return { key: k, wIdx: Number(wIdxStr), cIdx: Number(cIdxStr) };
+      })
+      .filter((t) => t.wIdx === wordIdx && t.cIdx >= (words[wordIdx]?.length ?? 0))
+      .sort((a, b) => a.cIdx - b.cIdx)
+      .map((t) => t.key);
 
   return (
-    // Container is now fixed height, p-4, and overflow-hidden
-    <div className="relative bg-card rounded-lg p-4 h-48 overflow-hidden">
-      {/* This wrapper will be translated up and down */}
+    <div className="relative bg-card rounded-lg p-4 h-48 overflow-hidden" ref={containerRef}>
+      {/* wrapper is the element that is translated; make it position:relative so caret can be absolute inside it */}
       <div
-        className="flex flex-wrap gap-x-3 gap-y-2 text-3xl leading-relaxed transition-transform duration-150 ease-linear"
-        style={{ transform: `translateY(-${translateY}px)` }}
+        ref={wrapperRef}
+        className="flex flex-wrap gap-x-3 gap-y-2 text-3xl leading-relaxed"
+        style={{
+          position: 'relative',
+          transform: `translateY(-${translateY}px)`,
+          transition: 'transform 220ms linear'
+        }}
       >
-        {/* We map all words, no slicing! */}
         {words.map((word, wordIdx) => {
           const isCurrentWord = wordIdx === currentWordIndex;
           const isPastWord = wordIdx < currentWordIndex;
@@ -59,14 +141,12 @@ const WordDisplay = ({
           return (
             <div
               key={wordIdx}
-              // Add a ref to each word element
               ref={(el) => {
-                if (el) wordElementsRef.current.set(wordIdx, el);
-                else wordElementsRef.current.delete(wordIdx);
+                if (el) wordElsRef.current.set(wordIdx, el);
+                else wordElsRef.current.delete(wordIdx);
               }}
-              className={`transition-opacity ${
-                isPastWord ? 'opacity-30' : 'opacity-100'
-              }`}
+              className={`relative transition-opacity ${isPastWord ? 'opacity-30' : 'opacity-100'}`}
+              style={{ display: 'flex', alignItems: 'center' }}
             >
               {word.split('').map((char, charIdx) => {
                 const key = `${wordIdx}-${charIdx}`;
@@ -74,53 +154,75 @@ const WordDisplay = ({
                 const isCurrent = isCurrentWord && charIdx === currentCharIndex;
 
                 let className = 'word-char ';
-                if (isCurrent && status === 'running') {
-                  className += 'current ';
-                }
-                if (typed === 'correct') {
-                  className += 'correct';
-                } else if (typed === 'incorrect') {
-                  className += 'incorrect';
-                }
+                if (isCurrent) className += 'current ';
+                if (typed === 'correct') className += 'correct';
+                else if (typed === 'incorrect') className += 'incorrect';
 
                 return (
-                  <span key={charIdx} className={className}>
+                  <span
+                    key={charIdx}
+                    ref={(el) => {
+                      if (el) charElsRef.current.set(key, el);
+                      else charElsRef.current.delete(key);
+                    }}
+                    className={className}
+                    style={{ whiteSpace: 'pre' }}
+                  >
                     {char}
+                  </span>
+                );
+              })}
+
+              {getExtraTypedKeysForWord(wordIdx).map((extraKey) => {
+                const typedStatus = typedChars[extraKey];
+                return (
+                  <span
+                    key={extraKey}
+                    ref={(el) => {
+                      if (el) charElsRef.current.set(extraKey, el);
+                      else charElsRef.current.delete(extraKey);
+                    }}
+                    className={`word-extra ${typedStatus === 'incorrect' ? 'incorrect' : ''}`}
+                    style={{ whiteSpace: 'pre' }}
+                  >
+                    ?
                   </span>
                 );
               })}
             </div>
           );
         })}
+
+        {/* caret lives inside the wrapper so it translates with the wrapper transform */}
+        {showCaret && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              transform: `translate(${caretLeft}px, ${caretTop}px)`,
+              transition: 'transform 120ms cubic-bezier(.2,.8,.2,1), height 120ms linear, opacity 120ms linear',
+              width: 2,
+              height: caretHeight,
+              backgroundColor: '#f59e0b',
+              pointerEvents: 'none',
+              zIndex: 40,
+              willChange: 'transform'
+            }}
+          />
+        )}
       </div>
-      {/* --- FIX ---
-          Replaced CSS variables with hard-coded, high-contrast colors
-          that will work without relying on external theme variables.
-      */}
+
       <style>{`
-        .word-char.current {
+        .word-char, .word-extra {
+          display: inline-block;
           position: relative;
+          padding: 0 1px;
         }
-        .word-char.current::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          bottom: 0;
-          height: 100%;
-          width: 2px;
-          background-color: #3b82f6; /* Blue-500 */
-          animation: blink 1s infinite;
-        }
-        .word-char.correct {
-          color: #f9fafb; /* Gray-50 (White) */
-        }
-        .word-char.incorrect {
-          color: #ef4444; /* Red-500 */
-        }
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
+        .word-char.correct { color: #f9fafb; }   /* white-ish */
+        .word-char.incorrect { color: #ef4444; } /* red */
+        .word-extra { color: #ef4444; opacity: 0.95; }
       `}</style>
     </div>
   );
