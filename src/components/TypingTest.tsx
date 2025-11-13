@@ -262,6 +262,7 @@ const TypingTest = () => {
           currentWordIndex={currentWordIndex}
           currentCharIndex={currentCharIndex}
           typedChars={typedChars}
+          // typedTextMap={typedTextMap}
           status={status}
         />
 
