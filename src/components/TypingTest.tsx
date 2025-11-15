@@ -47,7 +47,7 @@ const TypingTest = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const WORDS_TO_GENERATE = 70; // Generate 50 words at a time
+  const WORDS_TO_GENERATE = 70; 
   const WORDS_BUFFER = 20; // Add more words when 20 are left
 
   useEffect(() => {
@@ -241,6 +241,7 @@ const TypingTest = () => {
         keystrokeData={keystrokeData}
         keyAccuracy={keyAccuracy}
         onRestart={handleRestart}
+        selectedTime={selectedTime}
       />
     );
   }

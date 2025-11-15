@@ -52,7 +52,7 @@ const DetailedAnalysis = ({ keystrokeData, keyAccuracy }: DetailedAnalysisProps)
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 ">
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4 text-foreground">Performance Over Time</h3>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
