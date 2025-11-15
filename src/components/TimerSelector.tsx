@@ -35,8 +35,8 @@ const TimerSelector = ({ selectedTime, onTimeChange, disabled }: TimerSelectorPr
           disabled={disabled}
           className={`
             font-mono text-sm
-            ${selectedTime === time 
-              ? 'bg-primary text-primary-foreground' 
+            ${selectedTime === time
+              ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-zinc-800'
             }
           `}
@@ -44,14 +44,24 @@ const TimerSelector = ({ selectedTime, onTimeChange, disabled }: TimerSelectorPr
           {time}
         </Button>
       ))}
-      
+
       {showCustomInput ? (
         <div className="flex gap-1 items-center">
+
           <Input
             type="number"
             value={customTime}
             onChange={(e) => setCustomTime(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCustomTimeSubmit()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCustomTimeSubmit();
+              }
+
+              // ADD THIS LINE:
+              // This stops the key event from reaching the parent div's
+              // onKeyDown listener, so you can type numbers.
+              e.stopPropagation();
+            }}
             placeholder="sec"
             className="w-32 h-8 text-sm font-mono"
             min="1"
@@ -76,7 +86,7 @@ const TimerSelector = ({ selectedTime, onTimeChange, disabled }: TimerSelectorPr
           className={`
             font-mono text-sm
             ${isCustomSelected
-              ? 'bg-primary text-primary-foreground' 
+              ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-zinc-800'
             }
           `}

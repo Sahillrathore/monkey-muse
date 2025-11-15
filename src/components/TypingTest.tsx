@@ -24,6 +24,11 @@ interface KeyAccuracy {
   accuracy: number;
 }
 
+interface TypedCharData {
+  status: 'correct' | 'incorrect';
+  char: string;
+}
+
 const TypingTest = () => {
   const [words, setWords] = useState<string[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
@@ -35,8 +40,7 @@ const TypingTest = () => {
   const [selectedMode, setSelectedMode] = useState<TestMode>('words');
   const [correctChars, setCorrectChars] = useState(0);
   const [incorrectChars, setIncorrectChars] = useState(0);
-  const [typedChars, setTypedChars] = useState<{ [key: string]: string }>({});
-  const [keystrokeData, setKeystrokeData] = useState<KeystrokeData[]>([]);
+  const [typedChars, setTypedChars] = useState<{ [key: string]: TypedCharData }>({}); const [keystrokeData, setKeystrokeData] = useState<KeystrokeData[]>([]);
   const [keyAccuracy, setKeyAccuracy] = useState<Map<string, KeyAccuracy>>(new Map());
   const [startTime, setStartTime] = useState<number>(0);
 
@@ -81,7 +85,10 @@ const TypingTest = () => {
     if (status === 'idle') {
       setStatus('running');
       setStartTime(Date.now());
-      inputRef.current?.focus();
+      // Change this:
+      // inputRef.current?.focus(); 
+      // To this:
+      containerRef.current?.focus();
     }
   };
 
@@ -97,7 +104,7 @@ const TypingTest = () => {
     setTypedChars({});
     setKeystrokeData([]);
     setKeyAccuracy(new Map());
-    inputRef.current?.focus();
+    containerRef.current?.focus();
   };
 
   const isLetter = (k: string) => /^[a-zA-Z]$/.test(k);
@@ -112,6 +119,9 @@ const TypingTest = () => {
   const handleTimeChange = (time: number) => {
     setSelectedTime(time);
     setTimeLeft(time);
+    // ADD THIS LINE:
+    // This manually returns focus to the main div that listens for key presses.
+    containerRef.current?.focus();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -171,7 +181,14 @@ const TypingTest = () => {
 
       setTypedChars({
         ...typedChars,
-        [key]: isCorrect ? 'correct' : 'incorrect',
+        // OLD:
+        // [key]: isCorrect ? 'correct' : 'incorrect',
+
+        // NEW: Store an object instead
+        [key]: {
+          status: isCorrect ? 'correct' : 'incorrect',
+          char: e.key // <-- This is the new, important part
+        },
       });
 
       const keyChar = e.key;

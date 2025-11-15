@@ -1,12 +1,19 @@
 import { TestStatus } from './TypingTest';
 import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 
+interface TypedCharData {
+  status: 'correct' | 'incorrect';
+  char: string;
+}
+
 interface WordDisplayProps {
   words: string[];
   currentWordIndex: number;
   currentCharIndex: number;
-  // typedChars maps "wordIdx-charIdx" -> 'correct' | 'incorrect' | undefined
-  typedChars: { [key: string]: string };
+  // OLD:
+  // typedChars: { [key: string]: string };
+  // NEW:
+  typedChars: { [key: string]: TypedCharData };
   status: TestStatus;
 }
 
@@ -149,14 +156,16 @@ const WordDisplay: React.FC<WordDisplayProps> = ({
               style={{ display: 'flex', alignItems: 'center' }}
             >
               {word.split('').map((char, charIdx) => {
+                // const key = `${wordIdx}-${charIdx}`;
                 const key = `${wordIdx}-${charIdx}`;
-                const typed = typedChars[key];
+                const typedData = typedChars[key];
+                const typedStatus = typedData?.status; // Get the status from the object
                 const isCurrent = isCurrentWord && charIdx === currentCharIndex;
 
                 let className = 'word-char ';
                 if (isCurrent) className += 'current ';
-                if (typed === 'correct') className += 'correct';
-                else if (typed === 'incorrect') className += 'incorrect';
+                if (typedStatus === 'correct') className += 'correct'; // Use typedStatus
+                else if (typedStatus === 'incorrect') className += 'incorrect'; // Use typedStatus
 
                 return (
                   <span
@@ -174,7 +183,10 @@ const WordDisplay: React.FC<WordDisplayProps> = ({
               })}
 
               {getExtraTypedKeysForWord(wordIdx).map((extraKey) => {
-                const typedStatus = typedChars[extraKey];
+                const typedData = typedChars[extraKey];
+                const typedStatus = typedData?.status;
+                const typedChar = typedData?.char; // <-- Get the actual typed char!
+
                 return (
                   <span
                     key={extraKey}
@@ -183,9 +195,9 @@ const WordDisplay: React.FC<WordDisplayProps> = ({
                       else charElsRef.current.delete(extraKey);
                     }}
                     className={`word-extra ${typedStatus === 'incorrect' ? 'incorrect' : ''}`}
-                    style={{ whiteSpace: 'pre' }}
+                    // style={{ whiteSpace: 'pre' }}
                   >
-                    ?
+                    {typedChar} {/* <-- Render the char, not '?' */}
                   </span>
                 );
               })}
