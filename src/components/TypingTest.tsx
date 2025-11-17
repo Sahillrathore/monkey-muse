@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { generateRow, TestMode } from '@/utils/wordGenerator';
-import { RotateCcw } from 'lucide-react';
+import { LineChart, ListEnd, Minus, RotateCcw } from 'lucide-react';
 // @ts-ignore
 import { Button } from '@/components/ui/button';
 import TestResults from './TestResults';
@@ -47,7 +47,7 @@ const TypingTest = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const WORDS_TO_GENERATE = 70; 
+  const WORDS_TO_GENERATE = 70;
   const WORDS_BUFFER = 20; // Add more words when 20 are left
 
   useEffect(() => {
@@ -249,26 +249,31 @@ const TypingTest = () => {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col items-center justify-center min-h-screen px-4 py-8 focus:outline-none"
+      className="flex flex-col items-center justify-start mt-32 min-h- px-4 py-8 focus:outline-none"
       tabIndex={0}
       onKeyDown={handleKeyPress}
     >
       <div className="w-full max-w-6xl space-y-8">
-        <div className="flex items-center justify-center">
-          <ModeSelector
-            selectedMode={selectedMode}
-            onModeChange={handleModeChange}
-            disabled={status === 'running'}
-          />
-        </div>
 
-        <div className="flex items-center justify-between">
-          <TimerSelector
-            selectedTime={selectedTime}
-            onTimeChange={handleTimeChange}
-            disabled={status === 'running'}
-          />
-          <div className="flex items-center gap-6">
+        <div className="flex items-center justify-center gap-1 mb-14">
+
+          <div className={`${status === 'running' && 'opacity-0'} flex items-center`}>
+            <ModeSelector
+              selectedMode={selectedMode}
+              onModeChange={handleModeChange}
+              disabled={status === 'running'}
+            />
+            <Minus className='rotate-90 mr-3' />
+            <TimerSelector
+              selectedTime={selectedTime}
+              onTimeChange={handleTimeChange}
+              selectedMode={selectedMode}
+              onModeChange={handleModeChange}
+              disabled={status === 'running'}
+            />
+            <Minus className='rotate-90' />
+          </div>
+          <div className="flex items-center gap-6 ml-0">
             <div className="text-4xl font-bold text-primary tabular-nums">
               {timeLeft}
             </div>

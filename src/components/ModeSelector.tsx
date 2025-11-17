@@ -16,7 +16,7 @@ const ModeSelector = ({ selectedMode, onModeChange, disabled }: ModeSelectorProp
   ];
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-1">
       {modes.map((mode) => (
         <Button
           key={mode.value}
@@ -27,7 +27,7 @@ const ModeSelector = ({ selectedMode, onModeChange, disabled }: ModeSelectorProp
           className={`
             font-mono text-sm
             ${selectedMode === mode.value 
-              ? 'bg-primary text-primary-foreground' 
+              ? 'bg-primary text-primary-foreground px-2 py-0' 
               : 'text-muted-foreground hover:text-black'
             }
           `}
